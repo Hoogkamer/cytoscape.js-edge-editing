@@ -1,24 +1,28 @@
-;(function(){ 'use strict';
-  
-  var anchorPointUtilities = require('./AnchorPointUtilities');
+(function () {
+  "use strict";
+
+  var anchorPointUtilities = require("./AnchorPointUtilities");
   var debounce = require("./debounce");
-  
+  var $ = require("jquery");
+
   // registers the extension on a cytoscape lib ref
-  var register = function( cytoscape, $, Konva){
-    var uiUtilities = require('./UIUtilities');
-    
-    if( !cytoscape || !$ || !Konva){ return; } // can't register if required libraries unspecified
+  var register = function (cytoscape, $, Konva) {
+    var uiUtilities = require("./UIUtilities");
+
+    if (!cytoscape || !$ || !Konva) {
+      return;
+    } // can't register if required libraries unspecified
 
     var defaults = {
       // this function specifies the poitions of bend points
       // strictly name the property 'bendPointPositions' for the edge to be detected for bend point edititng
-      bendPositionsFunction: function(ele) {
-        return ele.data('bendPointPositions');
+      bendPositionsFunction: function (ele) {
+        return ele.data("bendPointPositions");
       },
       // this function specifies the poitions of control points
       // strictly name the property 'controlPointPositions' for the edge to be detected for control point edititng
-      controlPositionsFunction: function(ele) {
-        return ele.data('controlPointPositions');
+      controlPositionsFunction: function (ele) {
+        return ele.data("controlPointPositions");
       },
       // whether to initilize bend and control points on creation of this extension automatically
       initAnchorsAutomatically: true,
@@ -29,11 +33,11 @@
       // the size of bend and control point shape is obtained by multipling width of edge with this parameter
       anchorShapeSizeFactor: 3,
       // z-index value of the canvas in which bend and control points are drawn
-      zIndex: 999,      
+      zIndex: 999,
       // whether to start the plugin in the enabled state
       enabled: true,
       //An option that controls the distance within which a bend point is considered "near" the line segment between its two neighbors and will be automatically removed
-      bendRemovalSensitivity : 8,
+      bendRemovalSensitivity: 8,
       // title of add bend point menu item (User may need to adjust width of menu items according to length of this option)
       addBendMenuItemTitle: "Add Bend Point",
       // title of remove bend point menu item (User may need to adjust width of menu items according to length of this option)
@@ -48,15 +52,15 @@
       removeAllControlMenuItemTitle: "Remove All Control Points",
       // whether the bend and control points can be moved by arrows
       moveSelectedAnchorsOnKeyEvents: function () {
-          return true;
+        return true;
       },
       // whether 'Remove all bend points' and 'Remove all control points' options should be presented
-      enableMultipleAnchorRemovalOption: false
+      enableMultipleAnchorRemovalOption: false,
     };
-    
+
     var options;
     var initialized = false;
-    
+
     // Merge default options with the ones coming from parameter
     function extend(defaults, options) {
       var obj = {};
@@ -67,112 +71,124 @@
 
       for (var i in options) {
         // SPLIT FUNCTIONALITY?
-        if(i == "bendRemovalSensitivity"){
+        if (i == "bendRemovalSensitivity") {
           var value = options[i];
-           if(!isNaN(value))
-           {
-              if(value >= 0 && value <= 20){
-                obj[i] = options[i];
-              }else if(value < 0){
-                obj[i] = 0
-              }else{
-                obj[i] = 20
-              }
-           }
-        }else{
+          if (!isNaN(value)) {
+            if (value >= 0 && value <= 20) {
+              obj[i] = options[i];
+            } else if (value < 0) {
+              obj[i] = 0;
+            } else {
+              obj[i] = 20;
+            }
+          }
+        } else {
           obj[i] = options[i];
         }
-
       }
 
       return obj;
-    };
-    
-    cytoscape( 'core', 'edgeEditing', function(opts){
+    }
+
+    cytoscape("core", "edgeEditing", function (opts) {
       var cy = this;
-      
-      if( opts === 'initialized' ) {
+
+      if (opts === "initialized") {
         return initialized;
       }
-      
-      if( opts !== 'get' ) {
+
+      if (opts !== "get") {
         // merge the options with default ones
         options = extend(defaults, opts);
         initialized = true;
 
         // define edgebendediting-hasbendpoints css class
-        cy.style().selector('.edgebendediting-hasbendpoints').css({
-          'curve-style': 'segments',
-          'segment-distances': function (ele) {
-            return anchorPointUtilities.getDistancesString(ele, 'bend');
-          },
-          'segment-weights': function (ele) {
-            return anchorPointUtilities.getWeightsString(ele, 'bend');
-          },
-          'edge-distances': 'node-position'
-        });
+        cy.style()
+          .selector(".edgebendediting-hasbendpoints")
+          .css({
+            "curve-style": "segments",
+            "segment-distances": function (ele) {
+              return anchorPointUtilities.getDistancesString(ele, "bend");
+            },
+            "segment-weights": function (ele) {
+              return anchorPointUtilities.getWeightsString(ele, "bend");
+            },
+            "edge-distances": "node-position",
+          });
 
         // define edgecontrolediting-hascontrolpoints css class
-        cy.style().selector('.edgecontrolediting-hascontrolpoints').css({
-          'curve-style': 'unbundled-bezier',
-          'control-point-distances': function (ele) {
-            return anchorPointUtilities.getDistancesString(ele, 'control');
-          },
-          'control-point-weights': function (ele) {
-            return anchorPointUtilities.getWeightsString(ele, 'control');
-          },
-          'edge-distances': 'node-position'
-        });
+        cy.style()
+          .selector(".edgecontrolediting-hascontrolpoints")
+          .css({
+            "curve-style": "unbundled-bezier",
+            "control-point-distances": function (ele) {
+              return anchorPointUtilities.getDistancesString(ele, "control");
+            },
+            "control-point-weights": function (ele) {
+              return anchorPointUtilities.getWeightsString(ele, "control");
+            },
+            "edge-distances": "node-position",
+          });
 
         anchorPointUtilities.setIgnoredClasses(options.ignoredClasses);
 
         // init bend positions conditionally
         if (options.initAnchorsAutomatically) {
           // CHECK THIS, options.ignoredClasses UNUSED
-          anchorPointUtilities.initAnchorPoints(options.bendPositionsFunction, options.controlPositionsFunction, cy.edges(), options.ignoredClasses);
+          anchorPointUtilities.initAnchorPoints(
+            options.bendPositionsFunction,
+            options.controlPositionsFunction,
+            cy.edges(),
+            options.ignoredClasses
+          );
         }
 
-        if(options.enabled)
-          uiUtilities(options, cy);
-        else
-          uiUtilities("unbind", cy);
+        if (options.enabled) uiUtilities(options, cy);
+        else uiUtilities("unbind", cy);
       }
-      
-      var instance = initialized ? {
-        /*
-        * get bend or control points of the given edge in an array A,
-        * A[2 * i] is the x coordinate and A[2 * i + 1] is the y coordinate
-        * of the ith bend point. (Returns undefined if the curve style is not segments nor unbundled bezier)
-        */
-        getAnchorsAsArray: function(ele) {
-          return anchorPointUtilities.getAnchorsAsArray(ele);
-        },
-        // Initilize points for the given edges using 'options.bendPositionsFunction'
-        initAnchorPoints: function(eles) {
-          anchorPointUtilities.initAnchorPoints(options.bendPositionsFunction, options.controlPositionsFunction, eles);
-        },
-        deleteSelectedAnchor: function(ele, index) {
-          anchorPointUtilities.removeAnchor(ele, index);
-        }
-      } : undefined;
+
+      var instance = initialized
+        ? {
+            /*
+             * get bend or control points of the given edge in an array A,
+             * A[2 * i] is the x coordinate and A[2 * i + 1] is the y coordinate
+             * of the ith bend point. (Returns undefined if the curve style is not segments nor unbundled bezier)
+             */
+            getAnchorsAsArray: function (ele) {
+              return anchorPointUtilities.getAnchorsAsArray(ele);
+            },
+            // Initilize points for the given edges using 'options.bendPositionsFunction'
+            initAnchorPoints: function (eles) {
+              anchorPointUtilities.initAnchorPoints(
+                options.bendPositionsFunction,
+                options.controlPositionsFunction,
+                eles
+              );
+            },
+            deleteSelectedAnchor: function (ele, index) {
+              anchorPointUtilities.removeAnchor(ele, index);
+            },
+          }
+        : undefined;
 
       return instance; // chainability
-    } );
-
+    });
   };
 
-  if( typeof module !== 'undefined' && module.exports ){ // expose as a commonjs module
+  if (typeof module !== "undefined" && module.exports) {
+    // expose as a commonjs module
     module.exports = register;
   }
 
-  if( typeof define !== 'undefined' && define.amd ){ // expose as an amd/requirejs module
-    define('cytoscape-edge-editing', function(){
+  if (typeof define !== "undefined" && define.amd) {
+    // expose as an amd/requirejs module
+    define("cytoscape-edge-editing", function () {
       return register;
     });
   }
 
-  if( typeof cytoscape !== 'undefined' && $ && Konva){ // expose to global cytoscape (i.e. window.cytoscape)
-    register( cytoscape, $, Konva );
+  if (typeof cytoscape !== "undefined" && $ && Konva) {
+    // expose to global cytoscape (i.e. window.cytoscape)
+    register(cytoscape, $, Konva);
   }
-
 })();
